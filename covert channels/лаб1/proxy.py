@@ -10,8 +10,8 @@ import string
 soc = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 soc.bind(PROXY_ADDRESS)
 
-random.seed(1000000)
 
+random.seed(1000000)
 
 # Имитация сетевого экрана
 def listener():
@@ -33,7 +33,7 @@ class MyConcurrentCollection:
         self.collection.put(x)
 
     def pop(self):
-        return self.collection.get()
+        return   self.collection.get()
 
     def __len__(self):
         return self.collection.qsize()
@@ -59,6 +59,7 @@ class Worker(threading.Thread):
         self.callback = callback
         self.i = 0
 
+
     def run(self):
         print(self.msg)
         while True:
@@ -68,7 +69,7 @@ class Worker(threading.Thread):
             if not self.input_collection.empty():
                 print(self.i // W)
                 packet = self.input_collection.pop()
-                if self.i == 0:
+                if self.i ==0:
                     with open('Dictionary.txt', 'w') as f:
                         pass
                 covert_message = self.msg[:W]
@@ -80,12 +81,14 @@ class Worker(threading.Thread):
 
 
 class Agent:
-    def __init__(self, msg, callback=None, threads_count=1):
+    def __init__(self, msg, callback=None, threads_count = 1):
         self.col = MyConcurrentCollection()
         self.consumers = [Worker(msg, self.col, callback) for _ in range(threads_count)]
 
+
     def sniffer(self):
         sniff(filter="src port 65011 and dst port 65010", prn=self.col.append, iface="lo")
+
 
     def run(self):
         for consumer in self.consumers:
@@ -93,6 +96,7 @@ class Agent:
         self.sniffer()
         for consumer in self.consumers:
             consumer.join()
+
 
     def calc_sum_i(cur_i, w_i):
         sum_i = 0
@@ -102,54 +106,45 @@ class Agent:
             sum_i += int(w_i, 2) - (2 ** (W - 1) - 1)
         return sum_i
 
-    def covert(covert_message, i):
+
+    def covert(covert_message, pkt, i):
         if i == 0:
             with open('Dictionary.txt', 'a+') as f:
-                l_max = random.randrange(2 ** W + 1, 3 ** W)
-                cur_l = l_max
+                l = random.randrange(2 ** W + 1, 3 ** W)
+                cur_l = l
                 l_next = cur_l
-                f.write(str(l_max) + '\n')
+                f.write(str(l) + '\n')
         else:
             with open('Dictionary.txt', 'r') as f:
                 all_ls = f.read().split('\n')[:-1]
-                l_max = int(all_ls[0])
+                l = int(all_ls[0])
                 l_next = int(all_ls[len(all_ls) - 1])
                 cur_l = l_next
 
         cur_l = l_next
         sum_i = Agent.calc_sum_i(i // W, covert_message)
-        l_next = sum_i + cur_l if sum_i + cur_l > 0 else sum_i + cur_l + l_max
+        l_next = sum_i + cur_l if sum_i + cur_l > 0 else sum_i + cur_l + l
 
         with open('Dictionary.txt', 'a') as f:
             f.write(str(l_next) + '\n')
         msg_to_send = ''.join(random.choices(string.ascii_letters, k=l_next))
-        l_max = cur_l
-        time.sleep(random.uniform(2, 3))
+        l = cur_l
+        time.sleep(random.uniform(2,3))
         soc.sendto(msg_to_send.encode(), SECOND_CLIENT_ADDRESS)
         print(len(msg_to_send))
 
 
 if __name__ == '__main__':
-    # parser = argparse.ArgumentParser(description='Covert channel emulation')
-    # parser.add_argument(help='data to transfer via covert channel', dest='filename',
-    #                     type=argparse.FileType('r'))
-    # args = parser.parse_args()
-    # if args.filename:
-    #     # file = open(args.filename)
-    #     msg = args.filename.read()
-    # else:
-    #     msg = input()
-
-    f = open('info.txt', 'r')
-    msg = f.read()
+    parser = argparse.ArgumentParser(description='Covert channel emulation')
+    parser.add_argument('-f', '--filename', help='data to tranfer via covert channel', required=False, dest='filename', type=str)
+    args = parser.parse_args()
+    if args.filename:
+        file = open(args.filename)
+        msg = file.read()
+    else:
+        msg = input()
 
     agent = Agent(msg, Agent.covert)
     thread_agent = threading.Thread(target=agent.run, args=())
-    # thread_proxy = threading.Thread(target=listener, args=())
-
     thread_agent.start()
-    # thread_proxy.start()
-
     thread_agent.join()
-    # thread_proxy.join()
-    # sniff()

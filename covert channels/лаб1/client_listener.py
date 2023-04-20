@@ -16,26 +16,25 @@ def listener():
     bits_of_msg = ''
     while True:
         data = soc.recv(10240)
-        #pac = sniff(filter="src port 65012 and dst port 65011")
-        #print(pac)
-        print(len(data))
         bits_of_msg += decoder(data, cur_i)
+        print("length of packet: ", len(data))
+        print("received bits: ", bits_of_msg)
         cur_i += 1
         if cur_i == K // W:
-            print('Bits of msg:', bits_of_msg)
+            print('Message in bits:', bits_of_msg)
             print('Decoded msg:', ''.join([chr(int(bits_of_msg[i:i+8], 2)) for i in range(0, len(bits_of_msg), 8)]))
             break
 
 
 def decoder(msg, cur_i):
     l_next = len(msg)
-    l_max = 0
+    l = 0
     all_ls = []
     with open('Dictionary.txt', 'r') as f:
         all_ls = f.read().split('\n')
-        l_max = int(all_ls[cur_i])
+        l = int(all_ls[cur_i])
 
-    sum_i = l_next - l_max
+    sum_i = l_next - l
     w_i = sum_i
     if cur_i % 2 == 0:
         w_i += 2 ** (W - 1)
